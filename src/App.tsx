@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "./lib/supabase";
 
@@ -9,7 +9,9 @@ export default function App() {
   const [countdown, setCountdown] = useState(5);
   const [showReset, setShowReset] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showBreakSeal, setShowBreakSeal] = useState(false);
+  const [showOpenButton, setShowOpenButton] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const invite = useMemo(
     () => ({
@@ -29,10 +31,10 @@ export default function App() {
 
   useEffect(() => {
     if (!opened && mode === "idle") {
-      setShowBreakSeal(false);
+      setShowOpenButton(false);
 
       const buttonTimer = setTimeout(() => {
-        setShowBreakSeal(true);
+        setShowOpenButton(true);
       }, 2000);
 
       return () => {
@@ -81,6 +83,23 @@ export default function App() {
     return true;
   };
 
+  const playMusic = async () => {
+    if (!audioRef.current) return;
+
+    try {
+      audioRef.current.volume = 0.35;
+      audioRef.current.loop = true;
+      await audioRef.current.play();
+    } catch (error) {
+      console.error("Audio playback failed:", error);
+    }
+  };
+
+  const handleOpen = async () => {
+    setOpened(true);
+    await playMusic();
+  };
+
   const startDestruct = () => {
     setMode("breach");
     setCountdown(5);
@@ -95,7 +114,12 @@ export default function App() {
     setCountdown(5);
     setShowReset(false);
     setIsSubmitting(false);
-    setShowBreakSeal(false);
+    setShowOpenButton(false);
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
   };
 
   const handleAccept = () => {
@@ -119,6 +143,10 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#050505] text-neutral-100">
+      <audio ref={audioRef} preload="auto">
+        <source src="/background-music.mp3" type="audio/mpeg" />
+      </audio>
+
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(212,175,55,0.08),transparent_38%)]" />
 
       <AnimatePresence>
@@ -207,16 +235,16 @@ export default function App() {
                     </div>
 
                     <AnimatePresence>
-                      {showBreakSeal && (
+                      {showOpenButton && (
                         <motion.button
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           transition={{ duration: 0.5 }}
-                          onClick={() => setOpened(true)}
+                          onClick={handleOpen}
                           className="mt-8 sm:mt-10 rounded-full bg-[#c9a44c] px-6 sm:px-8 py-3 sm:py-4 text-xs sm:text-sm uppercase tracking-[0.28em] sm:tracking-[0.35em] text-black transition hover:bg-[#ddb969]"
                         >
-                          Break Seal
+                          Open
                         </motion.button>
                       )}
                     </AnimatePresence>
